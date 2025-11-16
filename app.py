@@ -88,5 +88,5 @@ with tab3:
 st.markdown("---")
 
 # Footer
-st.caption("Created by [Your Name] | MSU Denver CS Project 2 | Fall 2025")
+st.caption("Created by Nathan G | MSU Denver CS Project 2 | Fall 2025")
 st.caption("Data automatically updated daily via KaggleHub")
