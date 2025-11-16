@@ -146,16 +146,7 @@ All final code implementation, data analysis, and design decisions were made by 
 
 This project is created for educational purposes as part of MSU Denver coursework.
 
-Dataset License: CC0 Public Domain (Kaggle)
-
----
-
-## 🙏 Acknowledgments
-
-- **Dataset:** Andrew MV (andrewmvd) on Kaggle for maintaining the S&P 500 dataset
-- **Frameworks:** Streamlit team for the amazing web framework
-- **Instructor:** MSU Denver CS-39AE course staff
-- **Visualization:** Plotly for interactive charting capabilities
+Dataset License: CC0 Public Domain (Kaggle) 
 
 ---
 
