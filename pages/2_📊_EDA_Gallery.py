@@ -47,7 +47,7 @@ fig1 = px.line(
 )
 
 fig1.update_layout(hovermode='x unified', height=500)
-st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig1, width='stretch')
 
 # How to read this chart
 with st.expander("📖 How to Read This Chart"):
@@ -96,7 +96,7 @@ fig2 = px.line(
 )
 
 fig2.update_layout(hovermode='x unified', height=600)
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig2, width='stretch')
 
 # Sector selector for detailed view
 st.markdown("#### 🔎 Focus on Specific Sectors")
@@ -117,7 +117,7 @@ if selected_sectors:
         labels={'Close': 'Average Closing Price ($)', 'Date': 'Date'}
     )
     fig2_filtered.update_layout(hovermode='x unified', height=400)
-    st.plotly_chart(fig2_filtered, use_container_width=True)
+    st.plotly_chart(fig2_filtered, width='stretch')
 
 # How to read this chart
 with st.expander("📖 How to Read This Chart"):
@@ -147,42 +147,47 @@ with st.expander("🔍 Key Observations"):
 st.markdown("---")
 
 # ====================
-# CHART 3: Market Cap vs Volatility (Scatter Plot)
+# CHART 3: Market Cap vs Volatility (Scatter Plot) - OPTIMIZED & CLEAN
 # ====================
 
 st.header("3️⃣ Market Capitalization vs Stock Volatility")
 st.markdown("**Question:** What is the relationship between a company's market capitalization and its stock price volatility?")
 
-# Calculate volatility (standard deviation of returns) for each stock
-volatility_data = []
-
-for symbol in stocks_df['Symbol'].unique():
-    stock_data = stocks_df[stocks_df['Symbol'] == symbol].sort_values('Date')
+# Cache the volatility calculation to avoid recalculating every time
+@st.cache_data
+def calculate_volatility(stocks_df, companies_df):
+    """
+    Optimized volatility calculation using vectorized operations.
+    """
+    # Sort by symbol and date
+    stocks_sorted = stocks_df.sort_values(['Symbol', 'Date']).copy()
     
-    if len(stock_data) > 1:
-        # Calculate daily returns
-        stock_data['Returns'] = stock_data['Close'].pct_change()
-        
-        # Calculate volatility (standard deviation of returns)
-        volatility = stock_data['Returns'].std()
-        
-        # Get company info
-        company_info = companies_df[companies_df['Symbol'] == symbol].iloc[0]
-        
-        volatility_data.append({
-            'Symbol': symbol,
-            'Volatility': volatility,
-            'Marketcap': company_info['Marketcap'],
-            'Sector': company_info['Sector'],
-            'Shortname': company_info['Shortname']
-        })
+    # Calculate returns for all stocks at once (vectorized)
+    stocks_sorted['Returns'] = stocks_sorted.groupby('Symbol')['Close'].pct_change(fill_method=None)
+    
+    # Calculate volatility (std of returns) for each symbol
+    volatility_series = stocks_sorted.groupby('Symbol')['Returns'].std()
+    
+    # Create dataframe with volatility
+    volatility_df = volatility_series.reset_index()
+    volatility_df.columns = ['Symbol', 'Volatility']
+    
+    # Merge with company data
+    volatility_df = volatility_df.merge(
+        companies_df[['Symbol', 'Marketcap', 'Sector', 'Shortname']], 
+        on='Symbol', 
+        how='left'
+    )
+    
+    # Remove missing values
+    volatility_df = volatility_df.dropna()
+    
+    return volatility_df
 
-volatility_df = pd.DataFrame(volatility_data)
+# Calculate volatility (cached - only runs once)
+volatility_df = calculate_volatility(stocks_df, companies_df)
 
-# Remove any missing values
-volatility_df = volatility_df.dropna()
-
-# Create scatter plot
+# Create scatter plot (no trend line - cleaner visualization)
 fig3 = px.scatter(
     volatility_df,
     x='Marketcap',
@@ -194,20 +199,8 @@ fig3 = px.scatter(
     log_x=True  # Log scale for better visualization
 )
 
-# Add trend line
-fig3.add_trace(
-    go.Scatter(
-        x=volatility_df['Marketcap'],
-        y=volatility_df['Volatility'],
-        mode='lines',
-        name='Trend',
-        line=dict(color='red', dash='dash'),
-        showlegend=True
-    )
-)
-
 fig3.update_layout(height=600, hovermode='closest')
-st.plotly_chart(fig3, use_container_width=True)
+st.plotly_chart(fig3, width='stretch')
 
 # How to read this chart
 with st.expander("📖 How to Read This Chart"):
@@ -217,7 +210,6 @@ with st.expander("📖 How to Read This Chart"):
     - **Points:** Each dot represents one company
     - **Colors:** Different sectors are color-coded
     - **Log scale:** X-axis uses logarithmic scale to better display the wide range of market caps
-    - **Trend line:** Red dashed line shows overall relationship between size and volatility
     - **Hover:** Click on points to see company name, symbol, and exact values
     """)
 
@@ -242,7 +234,13 @@ st.markdown("---")
 # ====================
 
 st.header("4️⃣ Revenue Growth Distribution Across Sectors")
-st.markdown("**Question:** How does revenue growth vary across different sectors, and which sectors show the most consistent growth?")
+st.markdown("""
+**Question:** How does revenue growth vary across different sectors, and which sectors 
+show the most consistent growth?
+
+*Note: This shows the distribution of current year-over-year revenue growth rates for 
+companies within each sector (snapshot data, not trends over time).*
+""")
 
 # Prepare data - remove missing revenue growth values
 revenue_df = companies_df[['Sector', 'Revenuegrowth', 'Symbol', 'Shortname']].dropna()
@@ -264,9 +262,9 @@ fig4.update_layout(
     showlegend=False
 )
 
-fig4.update_yaxis(tickformat='.0%')  # Format as percentage
+fig4.update_yaxes(tickformat='.0%')  # Format as percentage
 
-st.plotly_chart(fig4, use_container_width=True)
+st.plotly_chart(fig4, width='stretch')
 
 # Summary statistics
 st.markdown("#### 📊 Revenue Growth Statistics by Sector")
@@ -280,7 +278,7 @@ summary_stats = revenue_df.groupby('Sector')['Revenuegrowth'].agg([
 ]).round(4)
 
 summary_stats = summary_stats.sort_values('Median', ascending=False)
-st.dataframe(summary_stats.style.format("{:.2%}"), use_container_width=True)
+st.dataframe(summary_stats.style.format("{:.2%}"), width='stretch')
 
 # How to read this chart
 with st.expander("📖 How to Read This Chart"):
